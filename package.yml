@@ -1,0 +1,18 @@
+package: community.lazycat.app.directus
+name: Directus
+version: 0.0.0
+description: "Headless CMS and data platform: model any content in a database, then query it over REST or GraphQL."
+min_os_version: "1.5.0"
+homepage: https://github.com/directus/directus
+author: Directus
+license: MSCL-1.0-GPL
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Directus
+    description: "无头 CMS 与数据平台：可视化建模、管理任意数据，通过 REST/GraphQL 接口取用，带权限和文件管理。"
+  en:
+    name: Directus
+    description: "Headless CMS and data platform: model any content in a database, then query it over REST or GraphQL."

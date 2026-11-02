@@ -1,0 +1,82 @@
+application:
+  subdomain: directus
+  multi_instance: false
+  upstreams:
+    - location: /package-licenses/
+      backend: file:///lzcapp/pkg/content/licenses/
+    - location: /
+      backend: http://directus:8055/
+
+services:
+  db:
+    image: docker.1ms.run/library/postgres:16-alpine
+    environment:
+      - POSTGRES_DB=directus
+      - POSTGRES_USER=directus
+      - |-
+        POSTGRES_PASSWORD={{ stable_secret "directus_db_password" | replace "\r" "" | replace "\n" "" }}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U directus -d directus
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    binds:
+      - /lzcapp/var/pgdata:/var/lib/postgresql/data
+
+  directus:
+    # upstream: directus/directus:12.6.0
+    image: docker.1ms.run/directus/directus:12.6.0
+    depends_on:
+      - db
+    environment:
+      - |-
+        KEY={{ stable_secret "directus_key" | replace "\r" "" | replace "\n" "" }}
+      - |-
+        SECRET={{ stable_secret "directus_secret" | replace "\r" "" | replace "\n" "" }}
+      - DB_CLIENT=pg
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=directus
+      - DB_USER=directus
+      - |-
+        DB_PASSWORD={{ stable_secret "directus_db_password" | replace "\r" "" | replace "\n" "" }}
+      - |-
+        ADMIN_EMAIL={{ .U.admin_email }}
+      - |-
+        ADMIN_PASSWORD={{ .U.admin_password }}
+      - PUBLIC_URL=https://{{ .S.AppDomain }}
+      - STORAGE_LOCATIONS=local
+      - STORAGE_LOCAL_DRIVER=local
+      - STORAGE_LOCAL_ROOT=/directus/uploads
+      - WEBSOCKETS_ENABLED=true
+      - TZ=Asia/Shanghai
+    binds:
+      - /lzcapp/var/uploads:/directus/uploads
+      - /lzcapp/var/extensions:/directus/extensions
+
+usage: |
+  Directus 是无头 CMS 与数据平台：可视化建模、管理任意数据，通过 REST/GraphQL 取用。
+
+  使用方法：
+  1. 打开应用，用你在安装时填写的管理员邮箱和密码登录。
+  2. 在"数据模型"里新建集合（Collection）并添加字段。
+  3. 录入或导入数据后，通过 /items/<集合名> 的 REST 接口或 GraphQL 取用；
+     也可以在"设置 → 角色"里给不同人分配读写范围。
+
+  数据与安全：
+  - 数据库在 PostgreSQL（/lzcapp/var/pgdata），上传的文件在 /lzcapp/var/uploads，
+    扩展在 /lzcapp/var/extensions。卸载应用会一并删除，请定期备份。
+  - 数据库密码、应用 KEY 和 SECRET 均由平台稳定密钥生成，每个部署不同，不写成固定值。
+  - 管理员邮箱和密码来自安装参数，首次初始化时创建，不存在内置弱口令。
+  - 应用经懒猫入口鉴权访问。
+
+  说明：
+  - 本应用包含两个容器（Directus + PostgreSQL），启动顺序由依赖关系保证。
+  - 许可说明：本项目使用 MSCL-1.0-GPL（Monospace Sustainable Core License 1.0）。
+    该许可明确授予再分发权，条件为随附许可条款并保留版权声明；同时禁止绕过其 license key 功能。
+    本包原样附带许可全文，未做任何修改。
+  - 未配置邮件服务，邀请成员、找回密码等依赖邮件的功能不可用。
+  - 未做真机验证：登录、建集合、录数据、调 API 以及重启后持久化均未在设备上实测。
